@@ -24,14 +24,15 @@ dependencies:
 - haskeline
 - parsec
 - hspec
+- transformers
 
 library:
   source-dirs: src
 
 executables:
-  lambda-lisp-exe:
+  lambda-lisp:
     main:                Main.hs
-    source-dirs:         app
+    source-dirs:         lambda-calculus
     ghc-options:
     - -threaded
     - -rtsopts

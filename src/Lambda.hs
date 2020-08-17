@@ -1,5 +1,5 @@
 module Lambda (
-    Lambda, Parser, parseLambda, reduce, normalForm, rename, parseReduce
+    V, Term (..), Parser, try, parseLambda, reduce, normalForm, rename, parseReduce, term
 ) where
 
 import Text.Parsec
@@ -8,28 +8,28 @@ import Text.Parsec.Language (emptyDef)
 import qualified Text.Parsec.Token as Tok
 
 type V = String
-data Lambda = Var V | Lambda V Lambda | App Lambda Lambda
+data Term = Var V | Lambda V Term | App Term Term
 
 -- beta reduction
-rename :: String -> Lambda -> Lambda -> Lambda
+rename :: String -> Term -> Term -> Term
 rename from to t@(Var v) = if v == from then to else t
 rename from to t@(Lambda v term) = if v == from then t else Lambda v (rename from to term)
 rename from to (App a b) = App (rename from to a) (rename from to b)
 
-normalForm :: Lambda -> Bool
+normalForm :: Term -> Bool
 normalForm (Var v) = True
 normalForm (Lambda _ term) = normalForm term
 normalForm (App (Lambda _ _) b) = False
 normalForm (App a b) = normalForm a && normalForm b
 
-reduce :: Lambda -> Lambda
+reduce :: Term -> Term
 reduce (Var v) = Var v
 reduce (Lambda x term) = Lambda x (reduce term)
 reduce (App (Lambda x term) b) = rename x b term
 reduce (App a b) = App (reduce a) (reduce b)
 
 -- from AST to list
-instance Show Lambda where
+instance Show Term where
     show (Var v) = v
     show (Lambda v term) = "(lambda " ++ v ++ " " ++ show term ++ ")"
     show (App a b) = "(" ++ show a ++ " " ++ show b ++ ")"
@@ -50,24 +50,24 @@ reserved = Tok.reserved lexer
 var :: Parser String
 var = try (Tok.identifier lexer) <|> Tok.operator lexer
 
-abstraction :: Parser Lambda
+abstraction :: Parser Term
 abstraction = parens $ do
     reserved "lambda"
     x <- var
-    Lambda x <$> lambda
+    Lambda x <$> term
 
-app :: Parser Lambda
+app :: Parser Term
 app = parens $ do
-    a <- lambda
-    App a <$> lambda
+    a <- term
+    App a <$> term
 
-lambda :: Parser Lambda
-lambda = try (Var <$> var) <|> try abstraction <|> app
+term :: Parser Term
+term = try (Var <$> var) <|> try abstraction <|> app
 
-parseLambda :: String -> Either ParseError Lambda
-parseLambda = parse lambda "stdin"
+parseLambda :: String -> Either ParseError Term
+parseLambda = parse term "stdin"
 
-parseReduce :: String -> Either ParseError Lambda
+parseReduce :: String -> Either ParseError Term
 parseReduce s = do
     l <- parseLambda s
     return $ reduce l
